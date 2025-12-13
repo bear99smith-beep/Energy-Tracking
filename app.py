@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, JSONResponse
 import requests
 from requests.auth import HTTPBasicAuth
 from datetime import datetime, timedelta
@@ -27,6 +27,11 @@ TARIFF_URL = (
     "standard-unit-rates/"
 )
 
+# ---------- Startup logging (visible in fly logs) ----------
+print("🔑 OCTOPUS_API_KEY set:", bool(API_KEY))
+print("⚡ ELEC_MPAN:", ELEC_MPAN)
+print("🔥 GAS_MPRN:", GAS_MPRN)
+
 # ---------- Health ----------
 @app.get("/api/health")
 def health():
@@ -35,6 +40,9 @@ def health():
 # ---------- Electricity ----------
 @app.get("/api/electricity/cheapest")
 def cheapest(slots: int = 4):
+    if not API_KEY:
+        return JSONResponse(status_code=500, content={"error": "API key missing"})
+
     start = datetime.now(TZ).replace(hour=0, minute=0, second=0, microsecond=0)
     end = start + timedelta(days=1)
 
@@ -44,12 +52,17 @@ def cheapest(slots: int = 4):
         params={"period_from": start.isoformat(), "period_to": end.isoformat()}
     )
 
+    r.raise_for_status()
+
     prices = sorted(r.json()["results"], key=lambda x: x["value_inc_vat"])[:slots]
     return prices
 
 
 @app.get("/api/electricity/cost")
 def electricity_cost(days: int = 1):
+    if not all([API_KEY, ELEC_MPAN, ELEC_SERIAL]):
+        return JSONResponse(status_code=500, content={"error": "Electricity config missing"})
+
     end = datetime.utcnow()
     start = end - timedelta(days=days)
 
@@ -77,7 +90,7 @@ def electricity_cost(days: int = 1):
 
     for p in prices:
         kwh = usage_map.get(p["valid_from"])
-        if kwh:
+        if kwh is not None:
             total_kwh += kwh
             total_cost += kwh * p["value_inc_vat"] / 100
 
@@ -90,6 +103,9 @@ def electricity_cost(days: int = 1):
 # ---------- Gas ----------
 @app.get("/api/gas/usage")
 def gas_usage(days: int = 7):
+    if not all([API_KEY, GAS_MPRN, GAS_SERIAL]):
+        return JSONResponse(status_code=500, content={"error": "Gas config missing"})
+
     end = datetime.utcnow()
     start = end - timedelta(days=days)
 
@@ -101,26 +117,37 @@ def gas_usage(days: int = 7):
     r = requests.get(
         url,
         auth=HTTPBasicAuth(API_KEY, ""),
-        params={"period_from": start.isoformat(), "period_to": end.isoformat(), "group_by": "day"}
+        params={
+            "period_from": start.isoformat(),
+            "period_to": end.isoformat(),
+            "group_by": "day"
+        }
     )
 
+    r.raise_for_status()
     return r.json()["results"]
 
 
 @app.get("/api/gas/cost")
 def gas_cost(days: int = 7):
-    data = gas_usage(days)
-    total_kwh = sum(d["consumption"] for d in data)
+    usage = gas_usage(days)
+
+    if isinstance(usage, dict) and "error" in usage:
+        return usage
+
+    total_kwh = sum(d["consumption"] for d in usage)
     total_cost = (
         total_kwh * GAS_UNIT_RATE +
-        len(data) * GAS_STANDING
+        len(usage) * GAS_STANDING
     ) / 100
 
     return {
-        "days": len(data),
+        "days": len(usage),
         "kwh": round(total_kwh, 2),
         "cost": round(total_cost, 2)
     }
 
-# ---------- Static UI ----------
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+# ---------- UI ----------
+@app.get("/")
+def root():
+    return FileResponse("static/index.html")
