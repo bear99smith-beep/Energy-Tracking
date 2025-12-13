@@ -1,1 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Energy Dashboard</title>
+<style>
+body { font-family: -apple-system; margin:0; background:#f5f5f7 }
+header { padding:16px; text-align:center; font-size:22px; background:white }
+nav { display:flex; background:white }
+nav button { flex:1; padding:14px; font-size:18px; border:none }
+nav button.active { border-bottom:3px solid #007aff; font-weight:600 }
+section { display:none; padding:16px }
+section.active { display:block }
+.card { background:white; padding:16px; border-radius:12px; margin-bottom:12px }
+.row { display:flex; justify-content:space-between; padding:6px 0; font-size:18px }
+.price { font-weight:600 }
+</style>
+</head>
 
+<body>
+<header>Energy Dashboard</header>
+
+<nav>
+  <button id="eBtn" class="active">⚡ Electricity</button>
+  <button id="gBtn">🔥 Gas</button>
+</nav>
+
+<section id="elec" class="active">
+  <div class="card">
+    <h3>Cheapest Today</h3>
+    <div id="cheap"></div>
+  </div>
+  <div class="card">
+    <h3>Yesterday Cost</h3>
+    <div class="row"><div>Total</div><div id="ecost" class="price">–</div></div>
+  </div>
+</section>
+
+<section id="gas">
+  <div class="card">
+    <h3>Last 7 Days</h3>
+    <div class="row"><div>Total</div><div id="gcost" class="price">–</div></div>
+  </div>
+</section>
+
+<script>
+const eBtn = document.getElementById("eBtn");
+const gBtn = document.getElementById("gBtn");
+const e = document.getElementById("elec");
+const g = document.getElementById("gas");
+
+eBtn.onclick = () => { eBtn.classList.add("active"); gBtn.classList.remove("active"); e.classList.add("active"); g.classList.remove("active"); }
+gBtn.onclick = () => { gBtn.classList.add("active"); eBtn.classList.remove("active"); g.classList.add("active"); e.classList.remove("active"); }
+
+fetch("/api/electricity/cheapest")
+.then(r=>r.json())
+.then(d=>{
+  const c=document.getElementById("cheap");
+  d.forEach(p=>{
+    const r=document.createElement("div");
+    r.className="row";
+    r.innerHTML=`<div>${new Date(p.valid_from).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</div><div class="price">${p.value_inc_vat.toFixed(2)}p</div>`;
+    c.appendChild(r);
+  });
+});
+
+fetch("/api/electricity/cost?days=1")
+.then(r=>r.json())
+.then(d=>document.getElementById("ecost").textContent=`£${d.cost.toFixed(2)}`);
+
+fetch("/api/gas/cost?days=7")
+.then(r=>r.json())
+.then(d=>document.getElementById("gcost").textContent=`£${d.cost.toFixed(2)}`);
+</script>
+</body>
+</html>
