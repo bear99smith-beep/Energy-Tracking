@@ -9,7 +9,7 @@ import os
 app = FastAPI()
 
 # ---------- Config ----------
-API_KEY = os.getenv("OCTOPUS_API_KEY")
+API_KEY = os.getenv("API_KEY")
 
 ELEC_MPAN = os.getenv("ELEC_MPAN")
 ELEC_SERIAL = os.getenv("ELEC_SERIAL")
