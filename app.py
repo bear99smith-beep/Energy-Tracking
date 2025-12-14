@@ -245,6 +245,32 @@ index 6e1c1f2..b8c9f3a 100644
 +    total_cost_gbp = (total_kwh * GAS_UNIT_RATE + len(usage) * GAS_STANDING) / 100.0
 +    return {"days": len(usage), "kwh": round(total_kwh, 2), "cost": round(total_cost_gbp, 2)}
  
+# ---------- Debug (temporary) ----------
+from fastapi.responses import JSONResponse
+import os
+
+@app.get("/api/debug/env")
+def debug_env():
+    """Temporary endpoint to verify Fly secrets (masked for safety)."""
+    def mask(val):
+        if val is None:
+            return None
+        v = str(val)
+        return "*" * (len(v) - 4) + v[-4:] if len(v) > 4 else "*" * len(v)
+
+    data = {
+        "OCTOPUS_API_KEY": mask(os.getenv("OCTOPUS_API_KEY")),
+        "ELEC_MPAN": os.getenv("ELEC_MPAN"),
+        "ELEC_SERIAL": os.getenv("ELEC_SERIAL"),
+        "ELEC_STANDING_CHARGE": os.getenv("ELEC_STANDING_CHARGE"),
+        "GAS_MPRN": os.getenv("GAS_MPRN"),
+        "GAS_SERIAL": os.getenv("GAS_SERIAL"),
+        "GAS_UNIT_RATE": os.getenv("GAS_UNIT_RATE"),
+        "GAS_STANDING_CHARGE": os.getenv("GAS_STANDING_CHARGE"),
+        "AGILE_PRODUCT_CODE": os.getenv("AGILE_PRODUCT_CODE"),
+        "AGILE_TARIFF_CODE": os.getenv("AGILE_TARIFF_CODE"),
+    }
+    return JSONResponse(content=data)
  # ---------- UI ----------
  @app.get("/")
  def root():
