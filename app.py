@@ -1,4 +1,6 @@
 
+from typing import Dict, List, Any
+PRICES_CACHE: Dict[str, List[Dict[str, Any]]] = {}
 app = "energy-tracking"
 primary_region = "lhr"
 
