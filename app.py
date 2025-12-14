@@ -1,4 +1,6 @@
 
+from typing import Dict, List, Any  # add this near the top
+PRICES_CACHE: Dict[str, List[Dict[str, Any]]] = {}
 diff --git a/app.py b/app.py
 index 6e1c1f2..b8c9f3a 100644
 --- a/app.py
