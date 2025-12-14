@@ -3,14 +3,17 @@ app = "energy-tracking"
 primary_region = "lhr"
 
 [env]
-  PORT = "8080"            # this PORT will be used by uvicorn
+  PORT = "8080"
 
+# Defines the process named "app" that starts your FastAPI server
 [processes]
   app = "uvicorn app:app --host 0.0.0.0 --port 8080"
 
+# HTTP service that exposes the app process
 [[services]]
-  internal_port = 8080     # plain integer, no underscores
+  internal_port = 8080
   protocol = "tcp"
+  processes = ["app"]          # <-- this line fixes your error
 
   [[services.ports]]
     handlers = ["http"]
@@ -19,4 +22,3 @@ primary_region = "lhr"
   [[services.ports]]
     handlers = ["tls", "http"]
     port = 443
-
