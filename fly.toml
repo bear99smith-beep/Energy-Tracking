@@ -1,24 +1,53 @@
 
+# fly.toml for energy-tracking
 app = "energy-tracking"
-primary_region = "lhr"
+primary_region = "lhr"           # Closest region to your users
+kill_signal = "SIGINT"
+kill_timeout = 5
 
 [env]
-  PORT = "8080"
+# Your app should read PORT from the environment and bind to it
+PORT = "8080"
+# Add any other environment variables here
+# DATABASE_URL = "your-database-url"
+# NODE_ENV = "production"
 
-# Defines the process named "app" that starts your FastAPI server
-[processes]
-  app = "uvicorn app:app --host 0.0.0.0 --port 8080"
-
-# HTTP service that exposes the app process
 [[services]]
-  internal_port = 8080
-  protocol = "tcp"
-  processes = ["app"]          # <-- this line fixes your error
+# This MUST match the port your app listens on (or PORT above)
+internal_port = 8080
 
-  [[services.ports]]
-    handlers = ["http"]
-    port = 80
+# Auto start/stop behavior
+auto_start_machines = true
+auto_stop_machines = true
 
-  [[services.ports]]
-    handlers = ["tls", "http"]
-    port = 443
+# Concurrency settings
+[services.concurrency]
+type = "connections"
+soft_limit = 25
+hard_limit = 50
+
+# Public ports exposed via Fly proxy
+[[services.ports]]
+port = 80
+handlers = ["http"]
+
+[[services.ports]]
+port = 443
+handlers = ["tls", "http"]
+
+# Health checks — adjust path and timing for your app
+[[services.http_checks]]
+path = "/health"                 # Change if your health endpoint differs
+method = "get"
+interval = "10s"
+timeout = "5s"
+grace_period = "60s"
+tls_skip_verify = false
+headers = []
+
+# TCP check — useful fallback
+[[services.tcp_checks]]
+interval = "15s"
+timeout = "3s"
+grace_period = "60s"
+restart_limit = 0
